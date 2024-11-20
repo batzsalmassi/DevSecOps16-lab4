@@ -2,35 +2,31 @@ version: '3.8'
 
 services:
   frontend:
-    build: 
-      context: ./frontend  # Adjust this path based on your project structure
-      dockerfile: Dockerfile
+    image: seansal/lab4-frontend:latest
     ports:
       - "3000:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:5050
-      - WATCHPACK_POLLING=true  # Enable hot reload on Windows/Docker
-      - WDS_SOCKET_PORT=0  # Required for hot reload in container
-    volumes:
-      - ./frontend:/app  # For hot reloading
-      - /app/node_modules  # Prevents overwriting node_modules in container
+      - WATCHPACK_POLLING=true
+      - WDS_SOCKET_PORT=0
     depends_on:
       - web
 
   web:
-    build: 
-      context: ./backend  # Adjust this path
+    image: seansal/lab4-backend:latest
     ports:
       - "5050:5050"
     environment:
       - MONGO_DB_USERNAME=root
       - MONGO_DB_PASSWORD=example
       - MONGO_DB_HOST=mongo
+      - MONGO_DB_PORT=27017
+      - MONGODB_URL=mongodb://root:example@mongo:27017/
     depends_on:
       - mongo
 
   mongo:
-    image: mongo
+    image: seansal/lab4-mongo:latest
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
