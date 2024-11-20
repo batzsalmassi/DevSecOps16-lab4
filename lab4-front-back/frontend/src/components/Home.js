@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ShoppingBag, Star, Truck, Trash2 } from 'lucide-react';
 
+// Get the API URL from environment variables with a fallback
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050';
+
 function Home({ isAuthenticated }) {
   const [products, setProducts] = useState([]);
 
@@ -11,19 +14,22 @@ function Home({ isAuthenticated }) {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get('http://localhost:5050/api/products');
+      const response = await axios.get(`${API_URL}/api/products`);
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
+      // You might want to add some error state handling here
+      setProducts([]);
     }
   };
 
-  const handleDelete = async (index) => {
+  const handleDelete = async (productId) => {
     try {
-      await axios.delete(`http://localhost:5050/api/products/${index}`);
+      await axios.delete(`${API_URL}/api/products/${productId}`);
       fetchProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
+      // You might want to add some error feedback to the user here
     }
   };
 
@@ -97,8 +103,8 @@ function Home({ isAuthenticated }) {
         <div className="mt-16">
           <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-8">Our Products</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            {products.map((product) => (
+              <div key={product._id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                 <div className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                     {product.name}
@@ -112,7 +118,7 @@ function Home({ isAuthenticated }) {
                     </span>
                     {isAuthenticated && (
                       <button
-                        onClick={() => handleDelete(index)}
+                        onClick={() => handleDelete(product._id)}
                         className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                         aria-label="Delete product"
                       >

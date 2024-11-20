@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Package, DollarSign, FileText } from 'lucide-react';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050';
+
 function AddProduct() {
   const [formData, setFormData] = useState({
     name: '',
@@ -17,7 +19,7 @@ function AddProduct() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await axios.post('http://localhost:5050/api/products', {
+      await axios.post(`${API_URL}/api/products`, {
         name: formData.name,
         price: parseFloat(formData.price),
         description: formData.description

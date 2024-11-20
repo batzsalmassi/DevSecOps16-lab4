@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Lock, User } from 'lucide-react';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050';
+
 function Login({ setIsAuthenticated, setUsername: setGlobalUsername }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -12,7 +14,7 @@ function Login({ setIsAuthenticated, setUsername: setGlobalUsername }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5050/api/login', {
+      const response = await axios.post(`${API_URL}/api/login`, {
         username,
         password,
       });

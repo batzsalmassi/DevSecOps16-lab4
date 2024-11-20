@@ -39,9 +39,9 @@ def setup_mongodb():
     for attempt in range(max_retries):
         try:
             # Get MongoDB connection details from environment variables
-            username = os.environ.get['MONGO_DB_USERNAME']
-            password = os.environ.get['MONGO_DB_PASSWORD']
-            host = os.environ.get['MONGO_DB_HOST']
+            username = os.environ.get('MONGO_DB_USERNAME')
+            password = os.environ.get('MONGO_DB_PASSWORD')
+            host = os.environ.get('MONGO_DB_HOST')
             
             # Construct MongoDB connection URI with authentication database
             mongo_uri = f'mongodb://{username}:{password}@{host}:27017/?authSource=admin'
