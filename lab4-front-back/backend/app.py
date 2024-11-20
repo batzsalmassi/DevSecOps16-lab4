@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient, ASCENDING
 from bson import ObjectId
 import sys
+import os
+import time
 
 app = Flask(__name__)
 
@@ -31,38 +33,51 @@ def after_request(response):
     return response
 
 def setup_mongodb():
-    try:
-        # Connect to MongoDB with error handling
+    max_retries = 5
+    retry_delay = 3  # seconds
+    
+    for attempt in range(max_retries):
         try:
-            client = MongoClient('mongodb://localhost:27017/', serverSelectionTimeoutMS=5000)
-            # Test the connection
-            client.server_info()
-            db = client['ecommerce_db']
-        except Exception as e:
-            print(f"Failed to connect to MongoDB: {str(e)}")
-            sys.exit(1)
-        
-        # Create collections if they don't exist
-        if 'users' not in db.list_collection_names():
-            users_collection = db.create_collection('users')
-            users_collection.create_index([('username', ASCENDING)], unique=True)
-            print("Users collection created with indexes")
-        else:
-            users_collection = db['users']
+            # Get MongoDB connection details from environment variables
+            username = os.environ.get['MONGO_DB_USERNAME']
+            password = os.environ.get['MONGO_DB_PASSWORD']
+            host = os.environ.get['MONGO_DB_HOST']
             
-        if 'products' not in db.list_collection_names():
-            products_collection = db.create_collection('products')
-            products_collection.create_index([('name', ASCENDING)])
-            print("Products collection created with indexes")
-        else:
+            # Construct MongoDB connection URI with authentication database
+            mongo_uri = f'mongodb://{username}:{password}@{host}:27017/?authSource=admin'
+            print(f"Attempt {attempt + 1}: Connecting to MongoDB at {host}")
+            
+            # Connect to MongoDB
+            client = MongoClient(mongo_uri, 
+                               serverSelectionTimeoutMS=5000,
+                               connectTimeoutMS=5000)
+            
+            # Test the connection
+            client.admin.command('ping')
+            print("Successfully connected to MongoDB")
+            
+            # Select and setup database
+            db = client['ecommerce_db']
+            
+            # Setup collections
+            users_collection = db['users']
             products_collection = db['products']
             
-        print("MongoDB setup completed successfully!")
-        return client, db, users_collection, products_collection
-        
-    except Exception as e:
-        print(f"MongoDB setup error: {str(e)}", file=sys.stderr)
-        sys.exit(1)
+            # Create indexes if they don't exist
+            users_collection.create_index([('username', ASCENDING)], unique=True)
+            products_collection.create_index([('name', ASCENDING)])
+            
+            print("MongoDB setup completed successfully!")
+            return client, db, users_collection, products_collection
+            
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {str(e)}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                print("Max retries reached. Could not connect to MongoDB.")
+                sys.exit(1)
 
 # Initialize MongoDB
 client, db, users_collection, products_collection = setup_mongodb()
@@ -70,23 +85,25 @@ client, db, users_collection, products_collection = setup_mongodb()
 @app.route('/api/health', methods=['GET'])
 def health_check():
     try:
-        db.command('ping')
+        client.admin.command('ping')
         return jsonify({
             'status': 'healthy',
             'database': 'connected',
-            'collections': db.list_collection_names()
+            'collections': db.list_collection_names(),
+            'mongodb_host': os.environ.get('MONGO_DB_HOST', 'mongo')
         })
     except Exception as e:
         return jsonify({
             'status': 'unhealthy',
-            'error': str(e)
+            'error': str(e),
+            'mongodb_host': os.environ.get('MONGO_DB_HOST', 'mongo')
         }), 500
 
 @app.route('/api/register', methods=['POST'])
 def register():
     print("Received registration request")
     try:
-        data = request.get_json()  # Changed from request.json for better error handling
+        data = request.get_json()
         if not data:
             return jsonify({'message': 'No data provided'}), 400
             
@@ -125,7 +142,7 @@ def get_users():
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
-        data = request.json
+        data = request.get_json()
         username = data.get('username')
         password = data.get('password')
         
@@ -141,7 +158,6 @@ def login():
     except Exception as e:
         return jsonify({'message': f'Login error: {str(e)}'}), 500
 
-# Product routes
 @app.route('/api/products', methods=['GET'])
 def get_products():
     try:
@@ -155,12 +171,19 @@ def get_products():
 @app.route('/api/products', methods=['POST'])
 def add_product():
     try:
-        data = request.json
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+            
         product = {
             'name': data.get('name'),
-            'price': float(data.get('price')),
-            'description': data.get('description')
+            'price': float(data.get('price', 0)),
+            'description': data.get('description', '')
         }
+        
+        if not product['name']:
+            return jsonify({'message': 'Product name is required'}), 400
+            
         result = products_collection.insert_one(product)
         product['_id'] = str(result.inserted_id)
         return jsonify({'message': 'Product added successfully', 'product': product}), 201
