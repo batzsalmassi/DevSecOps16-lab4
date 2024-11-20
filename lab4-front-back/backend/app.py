@@ -2,6 +2,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # To handle CORS issues
 from werkzeug.security import generate_password_hash, check_password_hash
+from pymongo import MongoClient
 
 app = Flask(__name__)
 
@@ -14,9 +15,11 @@ CORS(app, resources={
 })
 app.secret_key = 'tomer'
 
-# Temporary storage (will be replaced with MongoDB later)
-dummy_users = []
-dummy_products = []
+# MongoDB configuration
+client = MongoClient('mongodb://localhost:27017/')
+db = client['mydatabase']
+users_collection = db['users']
+products_collection = db['products']
 
 # User routes
 @app.route('/api/register', methods=['POST'])
@@ -32,20 +35,25 @@ def register():
         if not username or not password:
             return jsonify({'message': 'Username and password are required'}), 400
         
-        if any(user['username'] == username for user in dummy_users):
+        if users_collection.find_one({'username': username}):
             return jsonify({'message': 'Username already exists'}), 400
         
         user = {
             'username': username,
             'password': generate_password_hash(password)
         }
-        dummy_users.append(user)
+        users_collection.insert_one(user)
         
         return jsonify({'message': 'Registration successful'}), 201
         
     except Exception as e:
         print(f"Registration error: {str(e)}")  # This will show in your Flask server logs
         return jsonify({'message': f'Registration failed: {str(e)}'}), 500
+    
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    users = list(users_collection.find({}, {'_id': 0, 'username': 1, 'password': 1}))
+    return jsonify(users)
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -53,7 +61,7 @@ def login():
     username = data.get('username')
     password = data.get('password')
     
-    user = next((user for user in dummy_users if user['username'] == username), None)
+    user = users_collection.find_one({'username': username})
     
     if user and check_password_hash(user['password'], password):
         return jsonify({
@@ -66,7 +74,8 @@ def login():
 # Product routes
 @app.route('/api/products', methods=['GET'])
 def get_products():
-    return jsonify(dummy_products)
+    products = list(products_collection.find({}, {'_id': 0, 'name': 1, 'price': 1, 'description': 1}))
+    return jsonify(products)
 
 @app.route('/api/products', methods=['POST'])
 def add_product():
@@ -76,13 +85,15 @@ def add_product():
         'price': float(data.get('price')),
         'description': data.get('description')
     }
-    dummy_products.append(product)
+    products_collection.insert_one(product)
     return jsonify({'message': 'Product added successfully'}), 201
 
 @app.route('/api/products/<int:product_index>', methods=['DELETE'])
 def delete_product(product_index):
-    if 0 <= product_index < len(dummy_products):
-        dummy_products.pop(product_index)
+    products = list(products_collection.find())
+    if 0 <= product_index < len(products):
+        product_id = products[product_index]['_id']
+        products_collection.delete_one({'_id': product_id})
         return jsonify({'message': 'Product deleted successfully'}), 200
     return jsonify({'message': 'Product not found'}), 404
 
