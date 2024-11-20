@@ -7,6 +7,7 @@ const Register = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -20,26 +21,36 @@ const Register = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsLoading(true);
 
     try {
+      console.log('Sending registration request...'); // Debug log
       const response = await fetch('http://localhost:5050/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
+        credentials: 'omit', // Try this if CORS is an issue
         body: JSON.stringify(formData)
       });
 
+      console.log('Response received:', response.status); // Debug log
+
       const data = await response.json();
+      console.log('Response data:', data); // Debug log
 
       if (!response.ok) {
         throw new Error(data.message || 'Registration failed');
       }
 
       setSuccess(data.message);
-      setFormData({ username: '', password: '' }); // Clear form
+      setFormData({ username: '', password: '' });
     } catch (err) {
-      setError(err.message);
+      console.error('Registration error:', err); // Debug log
+      setError(err.message || 'Failed to connect to server');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -94,9 +105,12 @@ const Register = () => {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isLoading}
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white 
+                ${isLoading ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'} 
+                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
             >
-              Register
+              {isLoading ? 'Registering...' : 'Register'}
             </button>
           </div>
         </form>
