@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab4-frontend-deployment
+  namespace: lab4
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lab4-frontend
+  template:
+    metadata:
+      labels:
+        app: lab4-frontend
+    spec:
+      containers:
+        - name: lab4-frontend
+          image: seansal/lab4-frontend:latest
+          ports:
+            - name: http
+              containerPort: 3000
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          env:
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=512"
+            - name: REACT_APP_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: lab4-config
+                  key: REACT_APP_API_URL

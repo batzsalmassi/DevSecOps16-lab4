@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lab4-config
+  namespace: lab4
+data:
+    MONGO_INITDB_ROOT_USERNAME: root
+    MONGO_INITDB_ROOT_PASSWORD: example
+    MONGO_DB_HOST: lab4-mongodb-svc
+    MONGO_DB_USERNAME: root           # Add this to match backend env vars
+    MONGO_DB_PASSWORD: example        # Add this to match backend env vars
+    REACT_APP_API_URL: "http://192.168.49.2:30200"

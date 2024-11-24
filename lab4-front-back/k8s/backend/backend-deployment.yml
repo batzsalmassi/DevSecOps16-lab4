@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab4-backend-deployment
+  namespace: lab4
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: lab4-backend
+  template:
+    metadata:
+      labels:
+        name: lab4-backend
+    spec:
+      containers:
+        - name: lab4-backend
+          image: seansal/lab4-backend:latest
+          ports:
+            - name: http
+              containerPort: 5050
+              protocol: TCP
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          env:
+            - name: MONGO_DB_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: lab4-config
+                  key: MONGO_DB_USERNAME
+            - name: MONGO_DB_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: lab4-config
+                  key: MONGO_DB_PASSWORD
+            - name: MONGO_DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: lab4-config
+                  key: MONGO_DB_HOST
